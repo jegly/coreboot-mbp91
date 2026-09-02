@@ -1,10 +1,7 @@
 # Operating this firmware once it's flashed
 
 Practical knobs and workflows. Nothing here requires reflashing unless it says
-so. See [README.md](README.md) for the port itself and
-[RECOVERY.md](RECOVERY.md) for unbricking.
-
----
+so. 
 
 ## 1. Runtime options (CMOS) — change without reflashing
 
