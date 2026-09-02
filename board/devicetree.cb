@@ -1,0 +1,136 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+chip northbridge/intel/sandybridge
+	# Two DDR3 SO-DIMM sockets, SPD read over SMBus at runtime. Indexed as
+	# spd_slot = 2 * channel + slot (see dram_find_spds_ddr3() in
+	# northbridge/intel/sandybridge/raminit.c), so this is:
+	#   [0] channel 0 slot 0   [1] channel 0 slot 1
+	#   [2] channel 1 slot 0   [3] channel 1 slot 1
+	#
+	# Because HAVE_SPD_IN_CBFS is not selected, raminit takes the
+	# cfg->spd_addresses path and mb_get_spd_map() is never called --
+	# these values here are the only ones that take effect.
+	#
+	# CONFIRMED on hardware 2026-08-28 with `i2cdetect -y -r 0` on the
+	# i801 SMBus adapter: devices present at 0x50 and 0x52, nothing at
+	# 0x51 or 0x53. Worth stating because this is genuinely board-specific
+	# -- lenovo/t430 and lenovo/x230, the closest analogues, use
+	# {0x50, 0, 0x51, 0}, and wrong addresses kill raminit in romstage
+	# with no console output.
+	register "spd_addresses" = "{0x50, 0, 0x52, 0}"
+	device domain 0 on
+		subsystemid 0x106b 0x7270 inherit
+		# dGPU: NVIDIA GK107M [GeForce GT 650M Mac Edition] (10de:0fd5)
+		# Enabled/disabled at runtime from CMOS via hybrid_graphics_mode.
+		device ref peg10 on
+			subsystemid 0x106b 0x00f7
+		end
+		# Thunderbolt: Intel CV82524 "Light Ridge" 4C. Left off deliberately:
+		# it does not work under coreboot on the 10,1 either, and leaving the
+		# controller unpowered removes a PCIe DMA path. Note that this is also
+		# the only external display output on this board.
+		device ref peg11 off
+			subsystemid 0x106b 0x00f7
+		end
+		device ref peg12 off
+			subsystemid 0x106b 0x00f7
+		end
+		device ref igd on
+			register "gfx.ndid" = "3"
+			register "gfx.use_spread_spectrum_clock" = "1"
+			# Panel port select 0 = LVDS (the 10,1 uses 1 = eDP).
+			register "gpu_panel_port_select" = "0"
+			# TODO: panel power sequencing and backlight PWM values are
+			# inherited from the 10,1 and must be re-read from this board's
+			# PCH_PP_ON_DELAYS / PCH_PP_OFF_DELAYS / BLC_PWM_CTL under the
+			# vendor firmware. Backlight here is driven by gmux, so the PCH
+			# PWM values may turn out to be irrelevant.
+			register "gpu_cpu_backlight" = "0x0000021c"
+			register "gpu_pch_backlight" = "0x021c0000"
+			register "gpu_panel_power_backlight_off_delay" = "2000"
+			register "gpu_panel_power_backlight_on_delay" = "2000"
+			register "gpu_panel_power_cycle_delay" = "5"
+			register "gpu_panel_power_down_delay" = "500"
+			register "gpu_panel_power_up_delay" = "600"
+			register "gpu_dp_b_hotplug" = "7"
+			register "gpu_dp_c_hotplug" = "7"
+			register "gpu_dp_d_hotplug" = "7"
+		end
+		chip southbridge/intel/bd82x6x # Intel 7 Series Panther Point PCH (HM77)
+			# TODO: verify against an inteltool dump of the vendor firmware.
+			register "gpi7_routing" = "2"
+			# No hotplug-capable slots on this board.
+			register "pcie_hotplug_map" = "{ 0, 0, 0, 0, 0, 0, 0, 0 }"
+			register "pcie_port_coalesce" = "1"
+			register "spi_uvscc" = "0x2005"
+			# TODO: derived from the 10,1; re-check against the observed USB
+			# topology (EHCI1 carries the SMSC 2513 hub -> IR receiver and
+			# keyboard/trackpad; EHCI2 carries camera and Bluetooth).
+			register "usb_port_config" = "{
+				{ 1, 0,  0 }, /* Ext A (XHCI/EHCI) */
+				{ 1, 0,  1 }, /* Ext B (XHCI) */
+				{ 1, 0,  2 }, /* Ext C (XHCI/EHCI) */
+				{ 1, 0,  3 }, /* Ext D (XHCI) */
+				{ 0, 0, -1 },
+				{ 1, 0, -1 }, /* SD */
+				{ 1, 0, -1 }, /* Wi-Fi */
+				{ 1, 0, -1 }, /* USB Hub (All LS/FS Devices) */
+				{ 1, 0, -1 }, /* Camera */
+				{ 1, 0,  4 }, /* Ext B (EHCI) */
+				{ 1, 0,  5 }, /* Ext D (EHCI) */
+				{ 1, 0, -1 }, /* BT */
+				{ 0, 0, -1 },
+				{ 0, 0, -1 },
+			}"
+			device ref xhci on
+				register "superspeed_capable_ports" = "0x0000000f"
+				register "xhci_switchable_ports" = "0x0000000f"
+			end
+			device ref ehci2 on end
+			device ref hda on end
+			# Broadcom BCM57765 GbE (14e4:16b4) + SDXC card reader (14e4:16bc)
+			device ref pcie_rp1 on end
+			# AirPort/Bluetooth card. Not populated on this machine.
+			device ref pcie_rp2 off end
+			# LSI FW643 FireWire 800 (11c1:5901). Left off deliberately:
+			# unused, and FireWire is a physical-access DMA path.
+			device ref pcie_rp3 off end
+			device ref ehci1 on end
+			device ref lpc on
+				# LPC generic decode ranges. The MacBookPro10,1 CL
+				# writes these as LPC_IO(base, size), but no such
+				# macro exists anywhere in coreboot -- every other
+				# board uses a raw value, and the CL fails to build
+				# with "implicit declaration of function 'LPC_IO'".
+				#
+				# Encoding (GEN*_DEC, D31:F0 offsets 0x84-0x90):
+				#   bits 23:18  address mask for address bits 7:2
+				#   bits 15:2   base address
+				#   bit 0       enable
+				# i.e. ((size - 1) >> 2) << 18 | base | 1
+				register "gen1_dec" = "0x000c0681"	# 0x0680-0x068f
+				register "gen2_dec" = "0x000c1641"	# 0x1640-0x164f
+				register "gen3_dec" = "0x001c0301"	# 0x0300-0x031f
+				register "gen4_dec" = "0x00fc0701"	# 0x0700-0x07ff
+				chip drivers/apple/hybrid_graphics
+					device pnp ff.f on end # dummy
+					# This board has a CLASSIC gmux, not an indexed one.
+					# Linux's apple-gmux reports:
+					#   apple_gmux: Found gmux version 1.9.35 [classic]
+					# The MacBookPro10,1 (Retina) is indexed and sets 1 here;
+					# inheriting that made every gmux access go into the void
+					# (coreboot read version 0.0.0 and max brightness 0), so
+					# gmux_switch() never actually moved the display mux and
+					# the panel stayed wired to the powered-off dGPU.
+					register "gmux_indexed" = "0"
+				end
+			end
+			device ref sata1 on
+				register "sata_interface_speed_support" = "0x3"
+				# Vendor firmware reports "2/6 ports implemented (mask 0x3)":
+				# port 0 = main drive bay, port 1 = SuperDrive bay.
+				register "sata_port_map" = "0x3"
+			end
+		end
+	end
+end

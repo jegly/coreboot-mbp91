@@ -1,0 +1,23 @@
+--- a/grub-core/term/usb_keyboard.c
++++ b/grub-core/term/usb_keyboard.c
+@@ -38,6 +38,10 @@
+     KEY_ERR_UNDEF = 0x03,
+     KEY_CAPS_LOCK = 0x39,
+     KEY_NUM_LOCK  = 0x53,
++    /* Not a valid HID keyboard usage. Observed when the interrupt transfer
++       returns garbage, e.g. while another USB device is being enumerated.
++       ps2.c already discards the equivalent 0xff from the i8042.  */
++    KEY_INVALID   = 0xff,
+   };
+ 
+ enum
+@@ -295,7 +299,8 @@
+       if (keycode == KEY_NO_KEY
+           || keycode == KEY_ERR_BUFFER
+           || keycode == KEY_ERR_POST
+-          || keycode == KEY_ERR_UNDEF)
++          || keycode == KEY_ERR_UNDEF
++          || keycode == KEY_INVALID)
+         {
+           /* Don't parse (rest of) this report */
+           termdata->index = 0;

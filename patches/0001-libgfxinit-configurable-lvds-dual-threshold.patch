@@ -1,0 +1,25 @@
+diff --git a/common/Makefile.inc b/common/Makefile.inc
+index 906e1cd..d826d94 100644
+--- a/common/Makefile.inc
++++ b/common/Makefile.inc
+@@ -88,6 +88,7 @@ GFX_GMA_COMMON_SUBSTITUTIONS := \
+ 	    -e's/<<ANALOG_I2C_PORT>>/$(CONFIG_GFX_GMA_ANALOG_I2C_PORT)/' \
+ 	    -e's/<<DEFAULT_MMIO_BASE>>/$(CONFIG_GFX_GMA_DEFAULT_MMIO)/' \
+ 	    -e's/<<IGNORE_STRAPS>>/$(CONFIG_GFX_GMA_IGNORE_PRESENCE_STRAPS)/' \
++	    -e's/<<LVDS_DUAL_THRESHOLD>>/$(CONFIG_GFX_GMA_LVDS_DUAL_THRESHOLD)/' \
+ 
+ ifeq ($(CONFIG_GFX_GMA_DYN_CPU),y)
+ $(hw-gfx-gma-config-ads): $(dir)/hw-gfx-gma-config.ads.template $(cnf)
+diff --git a/common/hw-gfx-gma-config.ads.template b/common/hw-gfx-gma-config.ads.template
+index dd6c2f8..e025390 100644
+--- a/common/hw-gfx-gma-config.ads.template
++++ b/common/hw-gfx-gma-config.ads.template
+@@ -75,7 +75,7 @@ private package HW.GFX.GMA.Config is
+ 
+    Default_MMIO_Base : constant := <<DEFAULT_MMIO_BASE>>;
+ 
+-   LVDS_Dual_Threshold : constant := 95_000_000;
++   LVDS_Dual_Threshold : constant := <<LVDS_DUAL_THRESHOLD>>;
+ 
+    Ignore_Presence_Straps : constant Boolean := <<IGNORE_STRAPS>>;
+ 

@@ -1,0 +1,23 @@
+diff --git a/common/ironlake/hw-gfx-gma-port_detect.adb b/common/ironlake/hw-gfx-gma-port_detect.adb
+index 599c2cd..3665e64 100644
+--- a/common/ironlake/hw-gfx-gma-port_detect.adb
++++ b/common/ironlake/hw-gfx-gma-port_detect.adb
+@@ -78,7 +78,17 @@ is
+         (Register => Registers.PCH_LVDS,
+          Mask     => PCH_LVDS_PORT_DETECTED,
+          Result   => LVDS_Detected);
+-      Config.Valid_Port (LVDS) := LVDS_Detected;
++      -- Honour Ignore_Presence_Straps here, as haswell_shared already does.
++      -- The Kconfig option (GFX_GMA_IGNORE_PRESENCE_STRAPS) is documented as
++      -- generic, but was only ever implemented for Haswell -- on Ironlake
++      -- through Ivy Bridge it silently did nothing.
++      --
++      -- Needed on Apple MacBookPro9,1: its LVDS presence strap does not read
++      -- as set at cold boot, so Valid_Port (LVDS) stayed False, and
++      -- Config_Helpers.Fill_Port_Config then refused to program the port --
++      -- silently, with no console output.
++      Config.Valid_Port (LVDS) :=
++         LVDS_Detected or Config.Ignore_Presence_Straps;
+ 
+       -- eDP
+       Registers.Is_Set_Mask

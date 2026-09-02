@@ -1,0 +1,27 @@
+diff --git a/src/drivers/intel/gma/Kconfig b/src/drivers/intel/gma/Kconfig
+index 9e7e2a41..be48ca4f 100644
+--- a/src/drivers/intel/gma/Kconfig
++++ b/src/drivers/intel/gma/Kconfig
+@@ -110,6 +110,22 @@ config GFX_GMA_IGNORE_PRESENCE_STRAPS
+ 	  is present/enabled. Select this option if a board doesn't correctly implement
+ 	  these straps, causing libgfxinit to fail to detect an attached panel.
+ 
++config GFX_GMA_LVDS_DUAL_THRESHOLD
++	int
++	depends on MAINBOARD_HAS_LIBGFXINIT
++	default 95000000
++	help
++	  Pixel clock, in Hz, at or above which libgfxinit drives an LVDS panel
++	  in dual-channel mode. The default of 95 MHz suits panels that follow
++	  the usual single-channel bandwidth limit.
++
++	  Some panels are wired for dual-channel operation despite running well
++	  below that limit, and cannot be driven single-channel at all. Such a
++	  panel needs this lowered below its pixel clock. Linux handles the same
++	  problem with a DMI quirk table (intel_dual_link_lvds in
++	  drivers/gpu/drm/i915/display/intel_lvds.c); if a board appears there,
++	  it needs this option too.
++
+ config GFX_GMA
+ 	def_bool y
+ 	depends on NORTHBRIDGE_INTEL_GM45 || NORTHBRIDGE_INTEL_X4X \

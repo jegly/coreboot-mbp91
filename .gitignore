@@ -1,0 +1,17 @@
+# Never commit firmware images. A bootable ROM contains the Intel ME region
+# and the flash descriptor from a specific machine -- proprietary, and
+# carrying that machine's serial number, UUIDs and MAC address.
+*.rom
+*.bin
+vendor/
+readback*
+console*.log
+*.log
+
+# ...except the blob-free release image, which has both of those regions
+# erased to 0xFF and contains only our own coreboot build.
+# (Consider attaching it as a GitHub Release asset instead of committing it.)
+!release/mbp91-noblobs.rom
+
+# Contains the hostname and MAC-address-shaped identifiers (see PUBLISHING.md).
+notes/hardware-probe.txt

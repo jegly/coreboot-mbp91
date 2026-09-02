@@ -1,0 +1,97 @@
+diff --git a/src/drivers/apple/hybrid_graphics/gmux.c b/src/drivers/apple/hybrid_graphics/gmux.c
+index e3788b24..3ad06e79 100644
+--- a/src/drivers/apple/hybrid_graphics/gmux.c
++++ b/src/drivers/apple/hybrid_graphics/gmux.c
+@@ -105,6 +105,29 @@ void gmux_write8(const struct device *dev, u8 port, u8 val)
+ 		gmux_pio_write8(port, val);
+ }
+ 
++void gmux_pio_write32(u8 port, u32 val)
++{
++	outl(val, GMUX_IOSTART + port);
++}
++
++void gmux_index_write32(u8 port, u32 val)
++{
++	gmux_index_wait_ready();
++	outl(val, GMUX_IOSTART + GMUX_PORT_VALUE);
++	outb(port & 0xff, GMUX_IOSTART + GMUX_PORT_WRITE);
++	gmux_index_wait_complete();
++}
++
++void gmux_write32(const struct device *dev, u8 port, u32 val)
++{
++	const struct drivers_apple_hybrid_graphics_config
++		*config = dev->chip_info;
++	if (config->gmux_indexed)
++		gmux_index_write32(port, val);
++	else
++		gmux_pio_write32(port, val);
++}
++
+ u32 gmux_read32(const struct device *dev, u8 port)
+ {
+ 	const struct drivers_apple_hybrid_graphics_config
+diff --git a/src/drivers/apple/hybrid_graphics/gmux.h b/src/drivers/apple/hybrid_graphics/gmux.h
+index 075f9b6c..4e4452e2 100644
+--- a/src/drivers/apple/hybrid_graphics/gmux.h
++++ b/src/drivers/apple/hybrid_graphics/gmux.h
+@@ -37,6 +37,10 @@ u32 gmux_index_read32(u8 port);
+ u32 gmux_pio_read32(u8 port);
+ u32 gmux_read32(const struct device *dev, u8 port);
+ 
++void gmux_index_write32(u8 port, u32 val);
++void gmux_pio_write32(u8 port, u32 val);
++void gmux_write32(const struct device *dev, u8 port, u32 val);
++
+ void gmux_switch(const struct device *dev, bool dgpu);
+ void gmux_dgpu_power_enable(const struct device *dev, bool enable);
+ 
+diff --git a/src/drivers/apple/hybrid_graphics/hybrid_graphics.c b/src/drivers/apple/hybrid_graphics/hybrid_graphics.c
+index 5d1a568d..a46987b9 100644
+--- a/src/drivers/apple/hybrid_graphics/hybrid_graphics.c
++++ b/src/drivers/apple/hybrid_graphics/hybrid_graphics.c
+@@ -35,12 +35,19 @@ static void enable_dev(struct device *dev)
+ 		return;
+ 	}
+ 
+-	version = gmux_index_read32(GMUX_PORT_VERSION_MAJOR);
++	/*
++	 * Use the dispatching accessors, which honour the mainboard's
++	 * "gmux_indexed" setting. These used to call gmux_index_read32()
++	 * unconditionally, which returns garbage on boards with a CLASSIC
++	 * (port-I/O) gmux -- e.g. the MacBookPro9,1, where every read came
++	 * back as 0 (version 0.0.0, max brightness 0).
++	 */
++	version = gmux_read32(dev, GMUX_PORT_VERSION_MAJOR);
+ 	ver_major = (version >> 24) & 0xff;
+ 	ver_minor = (version >> 16) & 0xff;
+ 	ver_release = (version >> 8) & 0xff;
+-	max_brightness = gmux_index_read32(GMUX_PORT_MAX_BRIGHTNESS);
+-	brightness = gmux_index_read32(GMUX_PORT_BRIGHTNESS)
++	max_brightness = gmux_read32(dev, GMUX_PORT_MAX_BRIGHTNESS);
++	brightness = gmux_read32(dev, GMUX_PORT_BRIGHTNESS)
+ 		& GMUX_BRIGHTNESS_MASK;
+ 
+ 	printk(BIOS_INFO, "gmux version: %d.%d.%d\n",
+@@ -48,6 +55,20 @@ static void enable_dev(struct device *dev)
+ 	printk(BIOS_INFO, "gmux max brightness: %d\n", max_brightness);
+ 	printk(BIOS_INFO, "gmux brightness: %d\n", brightness);
+ 
++	/*
++	 * Nothing in coreboot ever turned the panel backlight on: every
++	 * reference to GMUX_PORT_BRIGHTNESS was a read. On boards where the
++	 * gmux owns the backlight (rather than the PCH PWM) the panel can be
++	 * fully driven by libgfxinit and still look completely black.
++	 * i915 confirms gmux ownership on the MacBookPro9,1 by logging
++	 * "Skipping intel_backlight registration".
++	 */
++	if (max_brightness > 0 && brightness == 0) {
++		printk(BIOS_INFO, "gmux: enabling backlight (%d)\n",
++		       max_brightness);
++		gmux_write32(dev, GMUX_PORT_BRIGHTNESS, max_brightness);
++	}
++
+ 	mode = get_uint_option("hybrid_graphics_mode", HYBRID_GRAPHICS_DEFAULT_GPU);
+ 	gmux_switch(dev, mode == HYBRID_GRAPHICS_DISCRETE);
+ }

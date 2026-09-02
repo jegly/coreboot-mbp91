@@ -1,0 +1,12 @@
+diff --git a/src/northbridge/intel/sandybridge/gma.c b/src/northbridge/intel/sandybridge/gma.c
+index 2304a046..179764ab 100644
+--- a/src/northbridge/intel/sandybridge/gma.c
++++ b/src/northbridge/intel/sandybridge/gma.c
+@@ -611,6 +611,7 @@ static void gma_func0_init(struct device *dev)
+ 			printk(BIOS_SPEW, "Initializing VGA without OPROM.\n");
+ 			int lightup_ok;
+ 			gma_gfxinit(&lightup_ok);
++			printk(BIOS_INFO, "GMA: libgfxinit lightup_ok=%d\n", lightup_ok);
+ 			if (lightup_ok)
+ 				gfx_set_init_done(1);
+ 		}

@@ -1,0 +1,47 @@
+diff --git a/src/drivers/intel/gma/text_fb/gma-gfx_init.adb b/src/drivers/intel/gma/text_fb/gma-gfx_init.adb
+index 912b1b60..a23b15ab 100644
+--- a/src/drivers/intel/gma/text_fb/gma-gfx_init.adb
++++ b/src/drivers/intel/gma/text_fb/gma-gfx_init.adb
+@@ -37,6 +37,42 @@ is
+             Ports    => ports,
+             Max_Pipe => Primary);
+ 
++         -- LOCAL PATCH for Apple MacBookPro9,1 (820-3330).
++         --
++         -- This board's internal LVDS panel provides NO EDID: the DDC bus is
++         -- silent (i2cdetect on the i915 "panel" gmbus channel finds nothing
++         -- at 0x50, and i915 reports a 0-byte EDID). Apple keeps the panel
++         -- timings in their own firmware instead.
++         --
++         -- Probe_Port in libgfxinit derives the mode ONLY from EDID and has
++         -- no fallback: with no EDID it sets Success := False, the port is
++         -- left Disabled, lightup_ok stays 0, and the panel never lights --
++         -- silently, with no console output at all.
++         --
++         -- Timings below were read off this machine under the vendor firmware
++         -- via i915 (notes/hardware-probe.txt):
++         --   1440x900, 88.75 MHz, H 1440/1488/1520/1600, V 900/903/909/926,
++         --   negative H and V sync.
++         -- The 88.75 MHz dotclock also clears GFX_GMA_LVDS_DUAL_THRESHOLD
++         -- (80 MHz), so the panel is correctly driven dual-channel -- which
++         -- PCH_LVDS bits 5:4 and 3:2 both reading 3 on real hardware confirm.
++         if configs (Primary).Port = Disabled then
++            configs (Primary).Port := LVDS;
++            configs (Primary).Mode := Mode_Type'
++              (Dotclock           => 88_750_000,
++               H_Visible          => 1440,
++               H_Sync_Begin       => 1488,
++               H_Sync_End         => 1520,
++               H_Total            => 1600,
++               V_Visible          => 900,
++               V_Sync_Begin       => 903,
++               V_Sync_End         => 909,
++               V_Total            => 926,
++               H_Sync_Active_High => False,
++               V_Sync_Active_High => False,
++               BPC                => Auto_BPC);
++         end if;
++
+          if configs (Primary).Port /= Disabled then
+             HW.GFX.GMA.Power_Up_VGA;
+             vga_io_init;

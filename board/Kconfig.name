@@ -1,0 +1,4 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+config BOARD_APPLE_MACBOOKPRO9_1
+	bool "MacBookPro9,1"

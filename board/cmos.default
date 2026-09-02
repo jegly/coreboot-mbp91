@@ -1,0 +1,7 @@
+## SPDX-License-Identifier: GPL-2.0-only
+
+debug_level=Debug
+hybrid_graphics_mode=Integrated Only
+gfx_uma_size=32M
+me_state=Normal
+hyper_threading=Enable

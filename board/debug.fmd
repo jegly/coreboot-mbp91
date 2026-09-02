@@ -1,0 +1,26 @@
+# Flash layout for the DEBUG image only. NOT used by the production build.
+#
+# Adds a CONSOLE region so coreboot's flash console (CONFIG_CONSOLE_SPI_FLASH)
+# has somewhere to write. After a failed boot, read the chip back with the
+# external programmer and extract the log with:
+#
+#	cbfstool <readback>.bin read -r CONSOLE -f console.log
+#
+# Region boundaries below match the vendor descriptor exactly (see
+# notes/ifdtool-dump.txt): descriptor 0x0-0xfff, ME 0x1000-0x18ffff,
+# BIOS 0x190000-0x7fffff. 0x190000 + 0x670000 = 0x800000.
+#
+# NOTE: this image also requires a descriptor with host BIOS-region write
+# ENABLED, otherwise coreboot cannot write the log at all. See
+# vendor/descriptor-unlocked.bin.
+
+FLASH 8M {
+	SI_DESC@0x0 0x1000
+	SI_ME@0x1000 0x18f000
+	SI_BIOS@0x190000 0x670000 {
+		RW_MRC_CACHE@0x0 0x10000
+		CONSOLE@0x10000 0x20000
+		FMAP@0x30000 0x200
+		COREBOOT(CBFS)
+	}
+}
