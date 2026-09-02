@@ -4,9 +4,8 @@
 
 coreboot for the **MacBook Pro 9,1**: Apple A1286, EMC 2556, 15" Mid-2012 non-Retina, logic board 820-3330, Ivy Bridge, HM77.
 
-As far as I can tell nobody had ported this board before. It boots, it lights the internal LVDS panel using native graphics with no video blob, and it's been running Linux as a daily driver since.
+As far as I can tell nobody had ported this board before. It boots, it lights the internal LVDS panel using native graphics with no video blob.
 
-The name is because I was born in 1991. The board being a 9,1 is a happy accident.
 
 ---
 
@@ -18,7 +17,7 @@ The name is because I was born in 1991. The board being a 9,1 is a happy acciden
 
 **The published ROM isn't bootable on its own.** A working image needs the Intel ME firmware and flash descriptor from *your* machine. Those are proprietary, and they carry your serial number, UUIDs and MAC address, so nothing of the sort is shipped here. You splice your own in with a script. Details below.
 
-Budget a few flash cycles. It took me more than a few.
+Budget a few flash cycles. It took me more than a few, 8 pin SOIC is on the underside of the MOBO.
 
 ---
 
